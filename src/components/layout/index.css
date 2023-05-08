@@ -1,0 +1,10 @@
+.sider { 
+    position: fixed;
+}
+
+.content {
+    margin: 16px;
+    padding: 32px;
+    background-color: white;
+    border-radius: 16px;
+}

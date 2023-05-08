@@ -5,7 +5,7 @@ import './index.css'
 import { Outlet } from 'react-router-dom'
 
 const { Header, Content} = Layout
-const MainLayout = ({children}) => {
+const MainLayout = () => {
     return (
             <Layout style={{ minHeight: '100vh' }}>
                 <Sidebar />

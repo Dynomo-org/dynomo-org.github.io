@@ -63,7 +63,7 @@ const AppMain = () => {
                 base: app.app_config.strings,
             }
         }
-    })
+    }, [app, appConfig, appForm, styleForm, stringForm])
 
 
     const onFormChange = formType => {
@@ -79,6 +79,10 @@ const AppMain = () => {
         onFormChange(formType)
     }
 
+    const onSaveForm = () => {
+        // TODO
+    }
+
     const iconUploadProps = {
         name: 'file',
         showUploadList: false,
@@ -89,9 +93,9 @@ const AppMain = () => {
                 console.log(info.file, info.fileList);
             }
             if (status === 'done') {
-                message.success(`${info.file.name} file uploaded successfully.`);
+                // TODO
             } else if (status === 'error') {
-                message.error(`${info.file.name} file upload failed.`);
+                // TODO
             }
         },
         onDrop(e) {
@@ -118,7 +122,7 @@ const AppMain = () => {
         }
 
         getAppData()
-    }, [])
+    }, [id, navigate])
 
     useEffect(() => {
         if (app) {
@@ -131,7 +135,7 @@ const AppMain = () => {
             styleForm.setFieldsValue({ ...app.app_config.style })
             stringForm.setFieldsValue({ ...app.app_config.strings })
         }
-    }, [app])
+    }, [app, appForm, styleForm, stringForm])
 
     if (loading || !app) {
         return <Row justify='center' align='middle' style={{ height: '100%' }}><Spin /></Row>

@@ -101,7 +101,7 @@ const Dashboard = () => {
 
         setApps(response.data)
         setLoadingData(false)
-    }, [alert, setApps])
+    }, [setApps])
 
     const onTableRowAction = ((row) => ({
         onClick: () => navigate(`/apps/${row.id}`)

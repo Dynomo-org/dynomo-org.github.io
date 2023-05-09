@@ -19,6 +19,9 @@ const network = {
     post: async (endpoint, body) => {
         return request(endpoint, { method: 'post', body })
     },
+    put: async (endpoint, body) => {
+        return request(endpoint, { method: 'put', body })
+    },
     delete: async (endpoint) => {
         return request(endpoint, { method: 'delete' })
     }

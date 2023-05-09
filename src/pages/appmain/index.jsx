@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { useNavigate, useParams } from "react-router-dom"
 
 import network from '@/utils/network';
@@ -6,10 +6,14 @@ import { Button, Card, Col, Form, Image, Input, Row, Space, Spin, Typography, no
 import { useForm } from "antd/es/form/Form";
 import config from "./config";
 import Dragger from "antd/es/upload/Dragger";
+import image from "@/utils/image";
+import { LoadingOutlined } from "@ant-design/icons";
 
 const FormTypeConfig = "CONFIG"
-const FormTypeString = "STRING"
+const FormTypeString = "STRINGS"
 const FormTypeStyle = "STYLE"
+
+const IconFileSizeLimit = 1024 * 1024 * 0.5 // 0.5 MB
 
 const renderForm = (items) => {
     return items.map((item, index) =>
@@ -22,11 +26,17 @@ const renderForm = (items) => {
 const AppMain = () => {
     const { id } = useParams()
 
-    const [loading, setLoading] = useState(false)
+    const [loadingApp, setLoadingApp] = useState(false)
+    const [loadingIconUpdate, setLoadingIconUpdate] = useState(false)
+    const [loadingUpdateApp, setLoadingUpdateApp] = useState(false)
+    const [loadingUpdateStyle, setLoadingUpdateStyle] = useState(false)
+    const [loadingUpdateString, setLoadingUpdateString] = useState(false)
+
     const [app, setApp] = useState(null)
     const [appConfigChanged, setAppConfigChanged] = useState(false)
     const [appStyleChanged, setAppStyleChanged] = useState(false)
     const [appStringChanged, setAppStringChanged] = useState(false)
+    const [appIconUpload, setAppIconUpload] = useState()
 
     const [appForm] = useForm()
     const [styleForm] = useForm()
@@ -37,7 +47,7 @@ const AppMain = () => {
     const appConfig = useMemo(() => {
         if (!app) return {}
         return {
-            app_name: app.name,
+            name: app.name,
             package_name: app.package_name,
             version_code: app.version_code,
             version_name: app.version_name,
@@ -51,26 +61,52 @@ const AppMain = () => {
                 setter: setAppConfigChanged,
                 form: appForm,
                 base: appConfig,
+                setLoading: setLoadingUpdateApp,
+                constructObj: () => ({ id: app.id, ...appForm.getFieldsValue() })
             },
             [FormTypeStyle]: {
                 setter: setAppStyleChanged,
                 form: styleForm,
                 base: app.app_config.style,
+                setLoading: setLoadingUpdateStyle,
+                constructObj: () => ({ id: app.id, app_config: { style: { ...styleForm.getFieldsValue() } } })
             },
             [FormTypeString]: {
                 setter: setAppStringChanged,
                 form: stringForm,
                 base: app.app_config.strings,
+                setLoading: setLoadingUpdateString,
+                constructObj: () => ({ id: app.id, app_config: { strings: { ...stringForm.getFieldsValue() } } })
             }
         }
     }, [app, appConfig, appForm, styleForm, stringForm])
 
+    const iconUploadProps = useMemo(() => ({
+        name: 'file',
+        showUploadList: false,
+        fileList: appIconUpload?.file ? [appIconUpload.file] : [],
+        beforeUpload: async (file) => {
+            if (!["image/png", "image/jpg", "image/jpeg"].includes(file.type)) {
+                notification.error({ title: "Error", description: "App icon should be a png, jpg, or jpeg" })
+                return false
+            }
+            if (file.size >= IconFileSizeLimit) {
+                notification.error({ title: "Error", description: "App icon size should be less than 500 KB" })
+                return false
+            }
 
-    const onFormChange = formType => {
+            const base64 = await image.getBase64(file)
+            setAppIconUpload({ base64, file })
+            return false;
+        },
+    }), [appIconUpload])
+
+
+    const onFormChange = useCallback(formType => {
         const form = formMap[formType]
         if (!form) return
-        return form.setter(JSON.stringify(form.base) != JSON.stringify(form.form.getFieldsValue()))
-    }
+        form.setter(JSON.stringify(form.base) != JSON.stringify(form.form.getFieldsValue()))
+    }, [formMap])
 
     const onResetForm = formType => {
         const form = formMap[formType]
@@ -79,55 +115,76 @@ const AppMain = () => {
         onFormChange(formType)
     }
 
-    const onSaveForm = () => {
-        // TODO
+    const onSaveForm = async (formType) => {
+        const form = formMap[formType]
+        if (!form) return
+        form.setLoading(true)
+        const { err } = await network.put("app", JSON.stringify(form.constructObj()))
+        if (err) {
+            notification.error({
+                title: "Error",
+                description: `Error updating app ${form.text}. Message: ${err.message}`
+            })
+            form.setLoading(false)
+            return
+        }
+        await getAppData()
+        form.setter(false)
+        form.setLoading(false)
+        notification.success({
+            title: "Success",
+            description: `App ${formType.toLowerCase()} updated successfully`
+        })
     }
 
-    const iconUploadProps = {
-        name: 'file',
-        showUploadList: false,
-        action: 'https://www.mocky.io/v2/5cc8019d300000980a055e76',
-        onChange(info) {
-            const { status } = info.file;
-            if (status !== 'uploading') {
-                console.log(info.file, info.fileList);
-            }
-            if (status === 'done') {
-                // TODO
-            } else if (status === 'error') {
-                // TODO
-            }
-        },
-        onDrop(e) {
-            console.log('Dropped files', e.dataTransfer.files);
-        },
+    const onUpdateAppIcon = async () => {
+        setLoadingIconUpdate(true)
+        const form = new FormData()
+        form.append("icon", appIconUpload.file)
+        form.append("app_id", app.id)
+        const { err } = await network.put('app/icon', form)
+        if (err) {
+            notification.error({
+                title: "Error",
+                description: `Error while updating the app icon, please contact the administrator. Message: ${err.message}`
+            })
+            setLoadingIconUpdate(false)
+            return
+        }
+        setAppIconUpload(null)
+        getAppData()
+        setLoadingIconUpdate(false)
+        notification.success({
+            title: "Success",
+            description: "App icon updated successfully"
+        })
     }
 
-    useEffect(() => {
-        const getAppData = async () => {
-            setLoading(true)
-            const endpoint = `app?id=${id}`
-            const { response, err } = await network.get(endpoint)
-            if (err) {
-                notification.error({
-                    title: "Error",
-                    description: `Error while getting the app data, please contact the administrator. Message: ${err.message}`
-                })
-                navigate(-1)
-                return
-            }
-
-            setApp(response.data)
-            setLoading(false)
+    const getAppData = useCallback(async (useGlobalLoading = false) => {
+        useGlobalLoading && setLoadingApp(true)
+        const endpoint = `app?id=${id}`
+        const { response, err } = await network.get(endpoint)
+        if (err) {
+            notification.error({
+                title: "Error",
+                description: `Error while getting the app data, please contact the administrator. Message: ${err.message}`
+            })
+            navigate(-1)
+            return
         }
 
-        getAppData()
+        setApp(response.data)
+        useGlobalLoading && setLoadingApp(false)
     }, [id, navigate])
+
+    useEffect(() => {
+        getAppData(true)
+    }, [getAppData])
 
     useEffect(() => {
         if (app) {
             appForm.setFieldsValue({
-                app_name: app.name,
+                name: app.name,
                 package_name: app.package_name,
                 version_code: app.version_code,
                 version_name: app.version_name
@@ -137,7 +194,7 @@ const AppMain = () => {
         }
     }, [app, appForm, styleForm, stringForm])
 
-    if (loading || !app) {
+    if (loadingApp || !app) {
         return <Row justify='center' align='middle' style={{ height: '100%' }}><Spin /></Row>
     }
 
@@ -154,7 +211,10 @@ const AppMain = () => {
                             {appConfigChanged && <Row justify='end'>
                                 <Space size='middle'>
                                     <Button onClick={() => onResetForm(FormTypeConfig)}>Reset</Button>
-                                    <Button type='primary' onClick={() => onSaveForm(FormTypeConfig)}>Save</Button>
+                                    <Button
+                                        type='primary'
+                                        onClick={() => onSaveForm(FormTypeConfig)}
+                                        icon={loadingUpdateApp && <LoadingOutlined />}>Save</Button>
                                 </Space>
                             </Row>}
                         </Space>
@@ -168,7 +228,10 @@ const AppMain = () => {
                             {appStyleChanged && <Row justify='end'>
                                 <Space size='middle'>
                                     <Button onClick={() => onResetForm(FormTypeStyle)}>Reset</Button>
-                                    <Button type='primary' onClick={() => onSaveForm(FormTypeStyle)}>Save</Button>
+                                    <Button
+                                        type='primary'
+                                        onClick={() => onSaveForm(FormTypeStyle)}
+                                        icon={loadingUpdateStyle && <LoadingOutlined />}>Save</Button>
                                 </Space>
                             </Row>}
                         </Space>
@@ -182,7 +245,10 @@ const AppMain = () => {
                             {appStringChanged && <Row justify='end'>
                                 <Space size='middle'>
                                     <Button onClick={() => onResetForm(FormTypeString)}>Reset</Button>
-                                    <Button type='primary' onClick={() => onSaveForm(FormTypeString)}>Save</Button>
+                                    <Button
+                                        type='primary'
+                                        onClick={() => onSaveForm(FormTypeString)}
+                                        icon={loadingUpdateString && <LoadingOutlined />}>Save</Button>
                                 </Space>
                             </Row>}
                         </Space>
@@ -196,9 +262,22 @@ const AppMain = () => {
                             <Typography.Title level={4}>Logo</Typography.Title>
                             {app.icon_url && <Image src={app.icon_url} />}
                             <Dragger {...iconUploadProps}>
-                                <Typography style={{ fontWeight: 'bold' }}>Drag and Drop Your App Icon Here</Typography>
-                                <Typography>Only 256 x 256px picture allowed</Typography>
+                                {appIconUpload?.base64 ?
+                                    <Image preview={false} src={appIconUpload.base64} style={{ width: '100%' }} /> :
+                                    <>
+                                        <Typography style={{ fontWeight: 'bold' }}>Drag and Drop or Select Your App Icon Here</Typography>
+                                        <Typography>256x256 px is recommended</Typography>
+                                    </>
+                                }
                             </Dragger>
+                            {appIconUpload?.base64 && <Row justify='end'>
+                                <Button
+                                    type='primary'
+                                    size="large"
+                                    style={{ width: '100%' }}
+                                    icon={loadingIconUpdate && <LoadingOutlined />}
+                                    onClick={onUpdateAppIcon}>Update Icon</Button>
+                            </Row>}
                         </Space>
                     </Card>
                 </Space>

@@ -3,7 +3,7 @@ export default {
         masterApp: [
             {
                 label: "App Name",
-                name: "app_name",
+                name: "name",
                 required: true,
                 placeholder: 'Example',
             },
@@ -26,8 +26,8 @@ export default {
                 placeholder: '1.1',
             },
             {
-                label: "Privacy Policy Url",
-                name: "privacy_policy_url",
+                label: "Privacy Policy Link",
+                name: "privacy_policy_link",
             },
         ],
         style: [

@@ -6,6 +6,7 @@ import './main.css'
 
 const Dashboard = loadable(() => import('@/pages/dashboard'))
 const AppMain = loadable(() => import('@/pages/appmain'))
+const AppBuild = loadable(() => import('@/pages/appbuild'))
 const NotFound = loadable(() => import('@/pages/notfound'))
 
 const App = () => {
@@ -16,6 +17,7 @@ const App = () => {
                     <Route index element={<Dashboard />} />
                     <Route path='apps/:id' element={<AppMain />} />
                     <Route path='apps/:id/content' element={<h1>Content</h1>} />
+                    <Route path='apps/:id/build' element={<AppBuild />} />
                     <Route path='history' element={<h1>History</h1>} />
                     <Route path='*' element={<NotFound />} />
                 </Route>

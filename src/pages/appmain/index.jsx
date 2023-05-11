@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { useNavigate, useParams } from "react-router-dom"
 
-import network from '@/utils/network';
 import { Button, Card, Col, Form, Image, Input, Row, Space, Spin, Typography, notification } from "antd";
 import { useForm } from "antd/es/form/Form";
-import config from "./config";
 import Dragger from "antd/es/upload/Dragger";
-import image from "@/utils/image";
 import { LoadingOutlined } from "@ant-design/icons";
+import network from '@/utils/network';
+import image from "@/utils/image";
+import config from "./config";
 
 const FormTypeConfig = "CONFIG"
 const FormTypeString = "STRINGS"
@@ -23,6 +23,7 @@ const renderForm = (items) => {
     )
 }
 
+const { forms } = config
 const AppMain = () => {
     const { id } = useParams()
 
@@ -41,7 +42,6 @@ const AppMain = () => {
     const [appForm] = useForm()
     const [styleForm] = useForm()
     const [stringForm] = useForm()
-    const { forms } = config
     const navigate = useNavigate()
 
     const appConfig = useMemo(() => {
@@ -118,6 +118,11 @@ const AppMain = () => {
     const onSaveForm = async (formType) => {
         const form = formMap[formType]
         if (!form) return
+        try {
+            await form.form.validateFields()
+        } catch (err) {
+            return
+        }
         form.setLoading(true)
         const { err } = await network.put("app", JSON.stringify(form.constructObj()))
         if (err) {

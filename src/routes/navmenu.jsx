@@ -1,35 +1,50 @@
-import {HomeOutlined, HistoryOutlined, DollarOutlined, ToolOutlined} from '@ant-design/icons'
+import { HomeOutlined, HistoryOutlined, ToolOutlined, DollarOutlined } from '@ant-design/icons'
 
-const appId = "app_id"
 export default {
-    '': [
-        {
-            icon: <HomeOutlined />,
-            label: "Apps",
-            key: "/"
-        }, {
-            icon: <HistoryOutlined />,
-            label: "Content",
-            key: `/apps/${appId}/content`
-        }, {
-            icon: <DollarOutlined />,
-            label: "Monetization",
-            key: `/apps/${appId}/monetization`
-        }, {
-            icon: <ToolOutlined />,
-            label: "Build",
-            key: `/apps/${appId}/build`
-        }
-    ],
-    apps: [
-        {
-            icon: <HomeOutlined />,
-            label: "Apps",
-            key: "/"
-        }, {
-            icon: <HistoryOutlined />,
-            label: "Content",
-            key: "#content"
-        }
-    ]
+    get: ({ appID }) => ({
+        '': [
+            {
+                icon: <HomeOutlined />,
+                label: "Apps",
+                key: "/"
+            }, {
+                icon: <HistoryOutlined />,
+                label: "Build History",
+                key: "/history"
+            }
+        ],
+        history: [
+            {
+                icon: <HomeOutlined />,
+                label: "Apps",
+                key: "/"
+            }, {
+                icon: <HistoryOutlined />,
+                label: "Build History",
+                key: "/history"
+            }
+        ],
+        apps: [
+            {
+                icon: <HomeOutlined />,
+                label: "Apps",
+                key: "/"
+            },
+            {
+                icon: <HistoryOutlined />,
+                label: "Content",
+                key: `/apps/${appID}/content`
+            },
+            {
+                icon: <DollarOutlined />,
+                label: "Monetization",
+                key: `/apps/${appID}/monetization`
+            },
+            {
+                icon: <ToolOutlined />,
+                label: "Build",
+                key: `/apps/${appID}/build`
+            }
+        ]
+    })
 }

@@ -46,21 +46,6 @@ export default {
                 name: "color_on_primary",
                 required: true,
             },
-            {
-                label: "Color Secondary",
-                name: "color_secondary",
-                required: true,
-            },
-            {
-                label: "Color Secondary Variant",
-                name: "color_secondary_variant",
-                required: true,
-            },
-            {
-                label: "Color On Secondary",
-                name: "color_on_secondary",
-                required: true,
-            },
         ],
         string: [
             {

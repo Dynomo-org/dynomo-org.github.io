@@ -1,13 +1,18 @@
-import { useCallback, useEffect, useMemo, useState } from "react"
-import { useNavigate, useParams } from "react-router-dom"
+import { useCallback, useContext, useEffect, useMemo, useState } from "react"
+import { useParams } from "react-router-dom"
 
-import { Button, Card, Col, Form, Image, Input, Row, Space, Spin, Typography, notification } from "antd";
+import { Button, Card, Col, Form, Image, Input, Row, Space, Typography } from "antd";
 import { useForm } from "antd/es/form/Form";
 import Dragger from "antd/es/upload/Dragger";
 import { LoadingOutlined } from "@ant-design/icons";
 import network from '@/utils/network';
 import image from "@/utils/image";
 import config from "./config";
+import { AppContext } from "@/contexts/app";
+import loadable from "@loadable/component";
+import notification from "@/utils/notification";
+
+const Loading = loadable(() => import("@/components/loading"))
 
 const FormTypeConfig = "CONFIG"
 const FormTypeString = "STRINGS"
@@ -26,14 +31,13 @@ const renderForm = (items) => {
 const { forms } = config
 const AppMain = () => {
     const { id } = useParams()
+    const { appStore: { app: { data: app, loading }, fetchApp } } = useContext(AppContext)
 
-    const [loadingApp, setLoadingApp] = useState(false)
     const [loadingIconUpdate, setLoadingIconUpdate] = useState(false)
     const [loadingUpdateApp, setLoadingUpdateApp] = useState(false)
     const [loadingUpdateStyle, setLoadingUpdateStyle] = useState(false)
     const [loadingUpdateString, setLoadingUpdateString] = useState(false)
 
-    const [app, setApp] = useState(null)
     const [appConfigChanged, setAppConfigChanged] = useState(false)
     const [appStyleChanged, setAppStyleChanged] = useState(false)
     const [appStringChanged, setAppStringChanged] = useState(false)
@@ -42,7 +46,6 @@ const AppMain = () => {
     const [appForm] = useForm()
     const [styleForm] = useForm()
     const [stringForm] = useForm()
-    const navigate = useNavigate()
 
     const appConfig = useMemo(() => {
         if (!app) return {}
@@ -52,6 +55,21 @@ const AppMain = () => {
             version_code: app.version_code,
             version_name: app.version_name,
         }
+    }, [app])
+
+    const appStyle = useMemo(() => {
+        if (!app) return {}
+        return {
+            name: app.name,
+            color_primary: app.color_primary,
+            color_primary_variant: app.color_primary_variant,
+            color_on_primary: app.color_on_primary,
+        }
+    }, [app])
+
+    const appString = useMemo(() => {
+        if (!app) return {}
+        return JSON.parse(app.strings)
     }, [app])
 
     const formMap = useMemo(() => {
@@ -67,19 +85,19 @@ const AppMain = () => {
             [FormTypeStyle]: {
                 setter: setAppStyleChanged,
                 form: styleForm,
-                base: app.app_config.style,
+                base: appStyle,
                 setLoading: setLoadingUpdateStyle,
-                constructObj: () => ({ id: app.id, app_config: { style: { ...styleForm.getFieldsValue() } } })
+                constructObj: () => ({ id: app.id, ...styleForm.getFieldsValue() })
             },
             [FormTypeString]: {
                 setter: setAppStringChanged,
                 form: stringForm,
-                base: app.app_config.strings,
+                base: appString,
                 setLoading: setLoadingUpdateString,
-                constructObj: () => ({ id: app.id, app_config: { strings: { ...stringForm.getFieldsValue() } } })
+                constructObj: () => ({ id: app.id, ...stringForm.getFieldsValue() })
             }
         }
-    }, [app, appConfig, appForm, styleForm, stringForm])
+    }, [app, appConfig, appForm, styleForm, stringForm, appStyle, appString])
 
     const iconUploadProps = useMemo(() => ({
         name: 'file',
@@ -87,11 +105,11 @@ const AppMain = () => {
         fileList: appIconUpload?.file ? [appIconUpload.file] : [],
         beforeUpload: async (file) => {
             if (!["image/png", "image/jpg", "image/jpeg"].includes(file.type)) {
-                notification.error({ title: "Error", description: "App icon should be a png, jpg, or jpeg" })
+                notification.error("App icon should be a png, jpg, or jpeg")
                 return false
             }
             if (file.size >= IconFileSizeLimit) {
-                notification.error({ title: "Error", description: "App icon size should be less than 500 KB" })
+                notification.error("App icon size should be less than 500 KB")
                 return false
             }
 
@@ -126,81 +144,45 @@ const AppMain = () => {
         form.setLoading(true)
         const { err } = await network.put("app", JSON.stringify(form.constructObj()))
         if (err) {
-            notification.error({
-                title: "Error",
-                description: `Error updating app ${form.text}. Message: ${err.message}`
-            })
+            notification.error(`Error updating app ${form.text}. Message: ${err.message}`)
             form.setLoading(false)
             return
         }
-        await getAppData()
+        await fetchApp(id)
         form.setter(false)
         form.setLoading(false)
-        notification.success({
-            title: "Success",
-            description: `App ${formType.toLowerCase()} updated successfully`
-        })
+        notification.success(`App ${formType.toLowerCase()} updated successfully`)
     }
 
     const onUpdateAppIcon = async () => {
         setLoadingIconUpdate(true)
         const form = new FormData()
         form.append("icon", appIconUpload.file)
-        form.append("app_id", app.id)
+        form.append("app_id", id)
         const { err } = await network.put('app/icon', form)
         if (err) {
-            notification.error({
-                title: "Error",
-                description: `Error while updating the app icon, please contact the administrator. Message: ${err.message}`
-            })
+            notification.error(`Error while updating the app icon, please contact the administrator. Message: ${err.message}`)
             setLoadingIconUpdate(false)
             return
         }
         setAppIconUpload(null)
-        getAppData()
+        fetchApp(id)
         setLoadingIconUpdate(false)
-        notification.success({
-            title: "Success",
-            description: "App icon updated successfully"
-        })
+        notification.success("App icon updated successfully")
     }
 
-    const getAppData = useCallback(async (useGlobalLoading = false) => {
-        useGlobalLoading && setLoadingApp(true)
-        const endpoint = `app?id=${id}`
-        const { response, err } = await network.get(endpoint)
-        if (err) {
-            notification.error({
-                title: "Error",
-                description: `Error while getting the app data, please contact the administrator. Message: ${err.message}`
-            })
-            navigate(-1)
-            return
-        }
-
-        setApp(response.data)
-        useGlobalLoading && setLoadingApp(false)
-    }, [id, navigate])
+    useEffect(() => {
+        fetchApp(id)
+    }, [fetchApp, id])
 
     useEffect(() => {
-        getAppData(true)
-    }, [getAppData])
+        if (appConfig) appForm.setFieldsValue({ ...appConfig })
+        if (appStyle) styleForm.setFieldsValue({ ...appStyle })
+        if (appString) stringForm.setFieldsValue({ ...appString })
+    }, [appConfig, appStyle, appString, appForm, styleForm, stringForm])
 
-    useEffect(() => {
-        if (app) {
-            appForm.setFieldsValue({
-                name: app.name,
-                package_name: app.package_name,
-                version_code: app.version_code,
-                version_name: app.version_name
-            })
-            styleForm.setFieldsValue({ ...app.app_config.style })
-            stringForm.setFieldsValue({ ...app.app_config.strings })
-        }
-    }, [app, appForm, styleForm, stringForm])
-
-    if (loadingApp || !app) {
-        return <Row justify='center' align='middle' style={{ height: '100%' }}><Spin /></Row>
+    if (loading || !app) {
+        return <Loading />
     }
 
     return (
@@ -241,23 +223,25 @@ const AppMain = () => {
                             </Row>}
                         </Space>
                     </Card>
-                    <Card>
-                        <Space direction="vertical" size='large' style={{ display: 'flex' }}>
-                            <Typography.Title level={4}>String Setting</Typography.Title>
-                            <Form form={stringForm} labelAlign='left' labelCol={{ span: 6 }} wrapperCol={{ span: 18 }} onChange={() => onFormChange(FormTypeString)}>
-                                {renderForm(forms.string)}
-                            </Form>
-                            {appStringChanged && <Row justify='end'>
-                                <Space size='middle'>
-                                    <Button onClick={() => onResetForm(FormTypeString)}>Reset</Button>
-                                    <Button
-                                        type='primary'
-                                        onClick={() => onSaveForm(FormTypeString)}
-                                        icon={loadingUpdateString && <LoadingOutlined />}>Save</Button>
-                                </Space>
-                            </Row>}
-                        </Space>
-                    </Card>
+                    {app.type !== 0 && (
+                        <Card>
+                            <Space direction="vertical" size='large' style={{ display: 'flex' }}>
+                                <Typography.Title level={4}>String Setting</Typography.Title>
+                                <Form form={stringForm} labelAlign='left' labelCol={{ span: 6 }} wrapperCol={{ span: 18 }} onChange={() => onFormChange(FormTypeString)}>
+                                    {renderForm(forms.string)}
+                                </Form>
+                                {appStringChanged && <Row justify='end'>
+                                    <Space size='middle'>
+                                        <Button onClick={() => onResetForm(FormTypeString)}>Reset</Button>
+                                        <Button
+                                            type='primary'
+                                            onClick={() => onSaveForm(FormTypeString)}
+                                            icon={loadingUpdateString && <LoadingOutlined />}>Save</Button>
+                                    </Space>
+                                </Row>}
+                            </Space>
+                        </Card>
+                    )}
                 </Space>
             </Col >
             <Col span={6}>

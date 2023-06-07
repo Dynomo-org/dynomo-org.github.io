@@ -89,7 +89,7 @@ const Dashboard = () => {
 
     const fetchData = useCallback(async () => {
         setLoadingData(true)
-        const { response, err } = await network.get("_admin/apps")
+        const { response, err } = await network.get("apps")
         if (err) {
             notification.error({
                 title: "Error",
@@ -99,7 +99,7 @@ const Dashboard = () => {
             return
         }
 
-        setApps(response.data)
+        setApps(response.data.apps)
         setLoadingData(false)
     }, [setApps])
 
@@ -150,6 +150,7 @@ const Dashboard = () => {
         setLoadingAddApp(true)
         const payload = form.getFieldsValue()
         const { err } = await network.post("app", JSON.stringify(payload))
+        console.log(err)
         if (err) {
             notification.error({
                 title: "Error",

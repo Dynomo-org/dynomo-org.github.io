@@ -3,6 +3,8 @@
 }
 
 .content {
+    position: relative;
+    overflow: hidden;
     margin: 16px;
     padding: 32px;
     background-color: white;

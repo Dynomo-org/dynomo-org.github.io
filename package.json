@@ -15,6 +15,7 @@
   "dependencies": {
     "@ant-design/icons": "^5.0.1",
     "@loadable/component": "^5.15.3",
+    "@tinymce/tinymce-react": "^4.3.0",
     "antd": "^5.4.6",
     "localforage": "^1.10.0",
     "match-sorter": "^6.3.1",

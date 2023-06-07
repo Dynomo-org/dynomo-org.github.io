@@ -40,7 +40,7 @@ const AppMain = () => {
         const payload = { app_id: id, ...formKeystore.getFieldsValue() }
         const { err } = await network.post("keystore", JSON.stringify(payload))
         if (err) {
-            notification.error({ title: "Error", description: "Error While Initiating Keystore" })
+            notification.error({description: "Error While Initiating Keystore" })
             setLoadingKeystore(false)
             return
         }
@@ -57,12 +57,12 @@ const AppMain = () => {
             }
             if (response.data.status == generateStatusSuccess) {
                 setKeystoreURL(response.data.url)
-                notification.success({ title: 'Success', description: "Keystore generated successfully" })
+                notification.success({ description: "Keystore generated successfully" })
                 setLoadingKeystore(false)
                 clearInterval(task)
                 return
             } else if (response.data.status == generateStatusFail) {
-                notification.error({ title: 'Error', description: `Error Generating Keystore, Error: ${response.data.error_message}` })
+                notification.error({ description: `Error Generating Keystore, Error: ${response.data.error_message}` })
                 setLoadingKeystore(false)
                 clearInterval(task)
                 return

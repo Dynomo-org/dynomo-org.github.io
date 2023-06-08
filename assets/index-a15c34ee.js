@@ -1,0 +1,1 @@
+import{j as t}from"./main-bac353e0.js";import{S as i}from"./index-832cdac1.js";import{R as o}from"./index-4b2d0440.js";import"./index-416f5d50.js";const a=()=>t.jsx(o,{justify:"center",align:"middle",style:{height:"100%"},children:t.jsx(i,{})});export{a as default};
